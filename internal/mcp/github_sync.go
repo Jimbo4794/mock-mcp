@@ -17,10 +17,12 @@ type GitHubSync struct {
 	testcasesDir      string
 	repoConfigPath    string // Path to tools.yaml relative to repo root (e.g., "config/tools.yaml")
 	repoTestcasesPath string // Path to testcases directory relative to repo root (e.g., "testcases")
+	username          string // GitHub username for private repo access
+	token             string // GitHub token/personal access token for private repo access
 }
 
 // NewGitHubSync creates a new GitHub sync instance
-func NewGitHubSync(repoURL, cacheDir, repoConfigPath, repoTestcasesPath string) *GitHubSync {
+func NewGitHubSync(repoURL, cacheDir, repoConfigPath, repoTestcasesPath, username, token string) *GitHubSync {
 	// Set defaults if not provided
 	if repoConfigPath == "" {
 		repoConfigPath = "config/tools.yaml"
@@ -36,6 +38,8 @@ func NewGitHubSync(repoURL, cacheDir, repoConfigPath, repoTestcasesPath string) 
 		testcasesDir:      filepath.Join(cacheDir, "testcases"),
 		repoConfigPath:    repoConfigPath,
 		repoTestcasesPath: repoTestcasesPath,
+		username:          username,
+		token:             token,
 	}
 }
 
@@ -56,14 +60,17 @@ func (gs *GitHubSync) Sync() error {
 	_, err := os.Stat(filepath.Join(repoDir, ".git"))
 	if os.IsNotExist(err) {
 		// Clone the repository
-		log.Printf("Cloning repository from %s...", gs.repoURL)
+		// Log URL without credentials for security
+		logURL := gs.sanitizeURLForLogging(gs.repoURL)
+		log.Printf("Cloning repository from %s...", logURL)
 		if err := gs.cloneRepo(repoDir); err != nil {
 			return fmt.Errorf("failed to clone repository: %w", err)
 		}
 		log.Printf("Repository cloned successfully")
 	} else if err == nil {
 		// Pull latest changes
-		log.Printf("Pulling latest changes from %s...", gs.repoURL)
+		logURL := gs.sanitizeURLForLogging(gs.repoURL)
+		log.Printf("Pulling latest changes from %s...", logURL)
 		if err := gs.pullRepo(repoDir); err != nil {
 			log.Printf("Warning: Failed to pull repository: %v. Using existing files.", err)
 			// Continue with existing files if pull fails
@@ -116,7 +123,9 @@ func (gs *GitHubSync) cloneRepo(destDir string) error {
 		return fmt.Errorf("failed to remove existing directory: %w", err)
 	}
 
-	cmd := exec.Command("git", "clone", "--depth", "1", gs.repoURL, destDir)
+	// Use authenticated URL if credentials are provided
+	cloneURL := gs.getAuthenticatedURL()
+	cmd := exec.Command("git", "clone", "--depth", "1", cloneURL, destDir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -128,6 +137,16 @@ func (gs *GitHubSync) cloneRepo(destDir string) error {
 
 // pullRepo pulls the latest changes from the repository
 func (gs *GitHubSync) pullRepo(repoDir string) error {
+	// For pull, we need to update the remote URL if credentials are provided
+	if gs.username != "" && gs.token != "" {
+		// Update the remote URL with credentials
+		authenticatedURL := gs.getAuthenticatedURL()
+		cmd := exec.Command("git", "-C", repoDir, "remote", "set-url", "origin", authenticatedURL)
+		if err := cmd.Run(); err != nil {
+			log.Printf("Warning: Failed to update remote URL: %v", err)
+		}
+	}
+
 	cmd := exec.Command("git", "-C", repoDir, "pull")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -214,6 +233,45 @@ func (gs *GitHubSync) GetRepoTestcasesPath() string {
 	return gs.repoTestcasesPath
 }
 
+// getAuthenticatedURL returns the repository URL with embedded credentials if provided
+func (gs *GitHubSync) getAuthenticatedURL() string {
+	if gs.username == "" || gs.token == "" {
+		return gs.repoURL
+	}
+
+	// Parse the URL and inject credentials
+	url := gs.repoURL
+
+	// Remove existing credentials if present (format: https://user:pass@host/path)
+	if protocolIdx := strings.Index(url, "://"); protocolIdx != -1 {
+		// Find the @ symbol after the protocol
+		afterProtocol := url[protocolIdx+3:]
+		if atIdx := strings.Index(afterProtocol, "@"); atIdx != -1 {
+			// Remove existing credentials
+			url = url[:protocolIdx+3] + afterProtocol[atIdx+1:]
+		}
+
+		// Insert new credentials after protocol
+		afterProtocol = url[protocolIdx+3:]
+		url = url[:protocolIdx+3] + fmt.Sprintf("%s:%s@", gs.username, gs.token) + afterProtocol
+	}
+
+	return url
+}
+
+// sanitizeURLForLogging removes credentials from URL for safe logging
+func (gs *GitHubSync) sanitizeURLForLogging(url string) string {
+	// Remove credentials from URL if present (format: https://user:pass@host/path)
+	if protocolIdx := strings.Index(url, "://"); protocolIdx != -1 {
+		afterProtocol := url[protocolIdx+3:]
+		if atIdx := strings.Index(afterProtocol, "@"); atIdx != -1 {
+			// Replace credentials with ***
+			url = url[:protocolIdx+3] + "***@" + afterProtocol[atIdx+1:]
+		}
+	}
+	return url
+}
+
 // Cleanup removes the cache directory (optional, for cleanup operations)
 func (gs *GitHubSync) Cleanup() error {
 	return os.RemoveAll(gs.cacheDir)
@@ -239,11 +297,15 @@ func SyncFromGitHub(repoURL string) (configPath string, testcasesDir string, git
 		repoTestcasesPath = "testcases"
 	}
 
+	// Get authentication credentials from environment variables
+	username := os.Getenv("GITHUB_USERNAME")
+	token := os.Getenv("GITHUB_TOKEN")
+
 	// Use a cache directory in the system temp or current directory
 	cacheBase := filepath.Join(os.TempDir(), "mock-mcp-github-sync")
 	cacheDir := filepath.Join(cacheBase, sanitizeRepoName(normalizedURL))
 
-	sync := NewGitHubSync(normalizedURL, cacheDir, repoConfigPath, repoTestcasesPath)
+	sync := NewGitHubSync(normalizedURL, cacheDir, repoConfigPath, repoTestcasesPath, username, token)
 	if err := sync.Sync(); err != nil {
 		return "", "", nil, fmt.Errorf("failed to sync from GitHub: %w", err)
 	}

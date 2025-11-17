@@ -61,6 +61,19 @@ Or with a shorter format:
 GITHUB_REPO_URL=Jimbo4794/mcp-testcases go run ./cmd/mock-mcp/main.go
 ```
 
+**Private Repository Access:**
+
+To sync from a private GitHub repository, provide your GitHub username and personal access token:
+
+```bash
+GITHUB_REPO_URL=https://github.com/user/private-repo \
+GITHUB_USERNAME=your-username \
+GITHUB_TOKEN=ghp_your_personal_access_token \
+go run ./cmd/mock-mcp/main.go
+```
+
+**Note:** The token should be a GitHub Personal Access Token (PAT) with appropriate repository access permissions. The token is never logged and is only used for authentication during git operations.
+
 **How it works:**
 
 1. On startup, if `GITHUB_REPO_URL` is set, the server will:
@@ -77,11 +90,23 @@ GITHUB_REPO_URL=Jimbo4794/mcp-testcases go run ./cmd/mock-mcp/main.go
 
 **Docker Example:**
 
+For public repositories:
 ```bash
 docker run -d \
   --name mock-mcp-server \
   -p 8080:8080 \
   -e GITHUB_REPO_URL=https://github.com/Jimbo4794/mcp-testcases \
+  mock-mcp-server:latest
+```
+
+For private repositories:
+```bash
+docker run -d \
+  --name mock-mcp-server \
+  -p 8080:8080 \
+  -e GITHUB_REPO_URL=https://github.com/user/private-repo \
+  -e GITHUB_USERNAME=your-username \
+  -e GITHUB_TOKEN=ghp_your_personal_access_token \
   mock-mcp-server:latest
 ```
 
@@ -201,6 +226,8 @@ volumes:
 
 - `TOOLS_CONFIG`: Path to the tools configuration file (default: `/app/config/tools.yaml`)
 - `GITHUB_REPO_URL`: GitHub repository URL to sync config and testcases from (e.g., `https://github.com/user/repo` or `user/repo`)
+- `GITHUB_USERNAME`: (Optional) GitHub username for accessing private repositories
+- `GITHUB_TOKEN`: (Optional) GitHub personal access token (PAT) for accessing private repositories. Required when `GITHUB_USERNAME` is set.
 - `GITHUB_TOOLS_CONFIG_PATH`: (Optional) Path to the tools.yaml file relative to the GitHub repository root (default: `config/tools.yaml`)
 - `GITHUB_TESTCASES_PATH`: (Optional) Path to the testcases directory relative to the GitHub repository root (default: `testcases`)
 - `GITHUB_WEBHOOK_SECRET`: (Optional) Secret for verifying GitHub webhook signatures. If not set, signature verification is disabled.
