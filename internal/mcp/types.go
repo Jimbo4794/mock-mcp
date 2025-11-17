@@ -42,9 +42,8 @@ type ToolResult struct {
 }
 
 type ContentBlock struct {
-	Type string      `json:"type"`
-	Text string      `json:"text,omitempty"`
-	JSON interface{} `json:"json,omitempty" yaml:"json,omitempty"`
+	Type string `json:"type"`
+	Text string `json:"text,omitempty"`
 }
 
 // Initialize Types

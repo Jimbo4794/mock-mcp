@@ -10,33 +10,55 @@ import (
 )
 
 func main() {
-	// Default config path, can be overridden via environment variable
-	configPath := os.Getenv("TOOLS_CONFIG")
-	if configPath == "" {
-		// Default paths to try (works for both local dev and Docker)
-		wd, _ := os.Getwd()
-		possiblePaths := []string{
-			"/app/config/tools.yaml",                  // Docker default
-			filepath.Join(wd, "config", "tools.yaml"), // Local dev
-			filepath.Join(wd, "..", "config", "tools.yaml"),
-			filepath.Join(wd, "..", "..", "config", "tools.yaml"),
-			"config/tools.yaml",
-		}
+	var configPath string
+	var testcasesDir string
+	var githubSync *mcp.GitHubSync
 
-		for _, path := range possiblePaths {
-			if _, err := os.Stat(path); err == nil {
-				configPath = path
-				break
-			}
+	// Check if GitHub sync is enabled
+	githubRepoURL := os.Getenv("GITHUB_REPO_URL")
+	if githubRepoURL != "" {
+		log.Printf("GitHub sync enabled. Syncing from: %s", githubRepoURL)
+		syncedConfigPath, syncedTestcasesDir, sync, err := mcp.SyncFromGitHub(githubRepoURL)
+		if err != nil {
+			log.Fatalf("Failed to sync from GitHub: %v", err)
 		}
-
-		// If still not found, use Docker default
+		configPath = syncedConfigPath
+		testcasesDir = syncedTestcasesDir
+		githubSync = sync
+		log.Printf("Synced config from GitHub: %s", configPath)
+		log.Printf("Synced testcases from GitHub: %s", testcasesDir)
+	} else {
+		// Default config path, can be overridden via environment variable
+		configPath = os.Getenv("TOOLS_CONFIG")
 		if configPath == "" {
-			configPath = "/app/config/tools.yaml"
+			// Default paths to try (works for both local dev and Docker)
+			wd, _ := os.Getwd()
+			possiblePaths := []string{
+				"/app/config/tools.yaml",                  // Docker default
+				filepath.Join(wd, "config", "tools.yaml"), // Local dev
+				filepath.Join(wd, "..", "config", "tools.yaml"),
+				filepath.Join(wd, "..", "..", "config", "tools.yaml"),
+				"config/tools.yaml",
+			}
+
+			for _, path := range possiblePaths {
+				if _, err := os.Stat(path); err == nil {
+					configPath = path
+					break
+				}
+			}
+
+			// If still not found, use Docker default
+			if configPath == "" {
+				configPath = "/app/config/tools.yaml"
+			}
 		}
 	}
 
-	server, err := mcp.NewMockMCPServer(configPath)
+	// Get webhook secret from environment variable (optional)
+	webhookSecret := os.Getenv("GITHUB_WEBHOOK_SECRET")
+
+	server, err := mcp.NewMockMCPServerWithWebhook(configPath, testcasesDir, githubSync, webhookSecret)
 	if err != nil {
 		log.Fatal("Failed to create server:", err)
 	}
@@ -50,6 +72,11 @@ func main() {
 	http.HandleFunc("/testcase/builder", server.HandleTestCaseBuilder)
 	http.HandleFunc("/api/testcase/save", server.HandleSaveTestCase)
 
+	// Register webhook endpoint if GitHub sync is enabled
+	if githubSync != nil {
+		http.HandleFunc("/webhook/github", server.HandleWebhook)
+	}
+
 	port := ":8080"
 	log.Printf("Starting Mock MCP Server on port %s", port)
 	log.Printf("Watching config file: %s", configPath)
@@ -60,6 +87,14 @@ func main() {
 	log.Printf("  GET /health - Health check")
 	log.Printf("  GET /testcase/builder - Test case builder UI")
 	log.Printf("  POST /api/testcase/save - Save test case API")
+	if githubSync != nil {
+		log.Printf("  POST /webhook/github - GitHub webhook endpoint (for auto-sync)")
+		if webhookSecret != "" {
+			log.Printf("    Webhook signature verification: ENABLED")
+		} else {
+			log.Printf("    Webhook signature verification: DISABLED (set GITHUB_WEBHOOK_SECRET to enable)")
+		}
+	}
 	log.Printf("")
 	log.Printf("Edit %s to add/remove tools. Changes will be reloaded automatically.", configPath)
 

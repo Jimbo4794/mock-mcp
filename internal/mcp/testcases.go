@@ -16,6 +16,18 @@ type TestCaseManager struct {
 
 // NewTestCaseManager creates a new test case manager
 func NewTestCaseManager(configPath string) *TestCaseManager {
+	return NewTestCaseManagerWithDir(configPath, "")
+}
+
+// NewTestCaseManagerWithDir creates a new test case manager with optional testcases directory
+func NewTestCaseManagerWithDir(configPath, testcasesDir string) *TestCaseManager {
+	// If testcasesDir is provided, use it directly
+	if testcasesDir != "" {
+		return &TestCaseManager{
+			testCasesDir: testcasesDir,
+		}
+	}
+
 	// Determine test cases directory based on config path location
 	configDir := filepath.Dir(configPath)
 	if configDir == "" || configDir == "." {

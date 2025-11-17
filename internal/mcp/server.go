@@ -18,20 +18,37 @@ type MockMCPServer struct {
 	toolManager     *ToolManager
 	testCaseManager *TestCaseManager
 	upgrader        websocket.Upgrader
+	webhookHandler  *WebhookHandler
 }
 
 // NewMockMCPServer creates a new MCP server instance
 func NewMockMCPServer(configPath string) (*MockMCPServer, error) {
+	return NewMockMCPServerWithTestcases(configPath, "")
+}
+
+// NewMockMCPServerWithTestcases creates a new MCP server instance with optional testcases directory
+func NewMockMCPServerWithTestcases(configPath, testcasesDir string) (*MockMCPServer, error) {
+	return NewMockMCPServerWithWebhook(configPath, testcasesDir, nil, "")
+}
+
+// NewMockMCPServerWithWebhook creates a new MCP server instance with optional webhook support
+func NewMockMCPServerWithWebhook(configPath, testcasesDir string, githubSync *GitHubSync, webhookSecret string) (*MockMCPServer, error) {
 	toolManager, err := NewToolManager(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tool manager: %w", err)
 	}
 
-	testCaseManager := NewTestCaseManager(configPath)
+	testCaseManager := NewTestCaseManagerWithDir(configPath, testcasesDir)
+
+	var webhookHandler *WebhookHandler
+	if githubSync != nil {
+		webhookHandler = NewWebhookHandler(githubSync, webhookSecret)
+	}
 
 	server := &MockMCPServer{
 		toolManager:     toolManager,
 		testCaseManager: testCaseManager,
+		webhookHandler:  webhookHandler,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true // Allow all origins for development
@@ -40,6 +57,15 @@ func NewMockMCPServer(configPath string) (*MockMCPServer, error) {
 	}
 
 	return server, nil
+}
+
+// HandleWebhook handles GitHub webhook requests
+func (s *MockMCPServer) HandleWebhook(w http.ResponseWriter, r *http.Request) {
+	if s.webhookHandler == nil {
+		http.Error(w, "Webhook handler not configured", http.StatusNotImplemented)
+		return
+	}
+	s.webhookHandler.HandleWebhook(w, r)
 }
 
 // Close closes the server and cleans up resources

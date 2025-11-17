@@ -45,6 +45,93 @@ TOOLS_CONFIG=/path/to/custom-tools.yaml go run ./cmd/mock-mcp/main.go
 
 The server automatically watches the configuration file and reloads tools when changes are detected. No restart required!
 
+### GitHub Repository Sync
+
+You can populate the `config/` and `testcases/` directories from a GitHub repository by setting the `GITHUB_REPO_URL` environment variable. The server will automatically clone or pull the latest changes from the repository on startup.
+
+**Usage:**
+
+```bash
+GITHUB_REPO_URL=https://github.com/Jimbo4794/mcp-testcases go run ./cmd/mock-mcp/main.go
+```
+
+Or with a shorter format:
+
+```bash
+GITHUB_REPO_URL=Jimbo4794/mcp-testcases go run ./cmd/mock-mcp/main.go
+```
+
+**How it works:**
+
+1. On startup, if `GITHUB_REPO_URL` is set, the server will:
+   - Clone the repository (if not already cached) or pull the latest changes
+   - Look for `tools.yaml` at the path specified by `GITHUB_TOOLS_CONFIG_PATH` (default: `config/tools.yaml`)
+   - Look for testcases at the path specified by `GITHUB_TESTCASES_PATH` (default: `testcases`)
+   - Copy the `tools.yaml` file from the repo to a local cache
+   - Copy the `testcases/` directory from the repo to a local cache
+   - Use the synced files for configuration and test cases
+
+2. The repository is cached locally in the system temp directory, so subsequent runs will pull updates instead of cloning fresh.
+
+3. The repository must have a `tools.yaml` file at the path specified by `GITHUB_TOOLS_CONFIG_PATH` (default: `config/tools.yaml`) and/or a testcases directory at the path specified by `GITHUB_TESTCASES_PATH` (default: `testcases`).
+
+**Docker Example:**
+
+```bash
+docker run -d \
+  --name mock-mcp-server \
+  -p 8080:8080 \
+  -e GITHUB_REPO_URL=https://github.com/Jimbo4794/mcp-testcases \
+  mock-mcp-server:latest
+```
+
+**Note:** The Docker image includes `git` to support GitHub sync functionality.
+
+### GitHub Webhook Integration
+
+When GitHub sync is enabled, the server automatically exposes a webhook endpoint that can receive GitHub push events. When changes are pushed to the `config/` or `testcases/` directories in the repository, the server will automatically sync the latest changes.
+
+**Setting up GitHub Webhooks:**
+
+1. In your GitHub repository, go to **Settings** → **Webhooks** → **Add webhook**
+2. Set the **Payload URL** to: `http://your-server:8080/webhook/github`
+3. Set **Content type** to: `application/json`
+4. Select **Just the push event** (or individual events → push)
+5. (Optional) Set a **Secret** and configure it as `GITHUB_WEBHOOK_SECRET` environment variable
+6. Click **Add webhook**
+
+**Webhook Security:**
+
+For production use, it's recommended to enable webhook signature verification:
+
+```bash
+GITHUB_REPO_URL=https://github.com/Jimbo4794/mcp-testcases \
+GITHUB_WEBHOOK_SECRET=your-secret-here \
+go run ./cmd/mock-mcp/main.go
+```
+
+The webhook secret should match the secret configured in your GitHub webhook settings. If `GITHUB_WEBHOOK_SECRET` is not set, webhook signature verification is disabled (useful for development/testing).
+
+**How it works:**
+
+1. When a push event is received, the webhook handler checks if any files in `config/` or `testcases/` were modified
+2. If relevant changes are detected, it triggers a repository sync
+3. The server pulls the latest changes and updates the local cache
+4. The tool manager automatically reloads tools if `tools.yaml` was modified (via file watching)
+
+**Docker Example with Webhook:**
+
+```bash
+docker run -d \
+  --name mock-mcp-server \
+  -p 8080:8080 \
+  -e GITHUB_REPO_URL=https://github.com/Jimbo4794/mcp-testcases \
+  -e GITHUB_WEBHOOK_SECRET=your-secret-here \
+  mock-mcp-server:latest
+```
+
+**Note:** Make sure your server is accessible from GitHub's webhook servers. For local development, you may need to use a service like [ngrok](https://ngrok.com/) to expose your local server.
+
 ## Docker
 
 ### Building the Docker Image
@@ -113,6 +200,10 @@ volumes:
 ### Environment Variables
 
 - `TOOLS_CONFIG`: Path to the tools configuration file (default: `/app/config/tools.yaml`)
+- `GITHUB_REPO_URL`: GitHub repository URL to sync config and testcases from (e.g., `https://github.com/user/repo` or `user/repo`)
+- `GITHUB_TOOLS_CONFIG_PATH`: (Optional) Path to the tools.yaml file relative to the GitHub repository root (default: `config/tools.yaml`)
+- `GITHUB_TESTCASES_PATH`: (Optional) Path to the testcases directory relative to the GitHub repository root (default: `testcases`)
+- `GITHUB_WEBHOOK_SECRET`: (Optional) Secret for verifying GitHub webhook signatures. If not set, signature verification is disabled.
 
 ### Health Check
 
@@ -134,7 +225,9 @@ mock-mcp/
 │       ├── types.go        # Type definitions
 │       ├── server.go       # HTTP server and MCP protocol handlers
 │       ├── tools.go        # Tool management and YAML loading
-│       └── testcases.go    # Test case loading and matching
+│       ├── testcases.go    # Test case loading and matching
+│       ├── github_sync.go  # GitHub repository sync functionality
+│       └── webhook.go      # GitHub webhook handler for auto-sync
 ├── config/
 │   └── tools.yaml         # Tool definitions
 ├── testcases/             # Test case YAML files
@@ -158,6 +251,7 @@ mock-mcp/
 - `GET /mcp?stream=true` - Streaming MCP endpoint (Server-Sent Events)
 - `WS /mcp` - WebSocket MCP endpoint
 - `GET /health` - Health check endpoint
+- `POST /webhook/github` - GitHub webhook endpoint (only available when `GITHUB_REPO_URL` is set)
 
 ## Usage Examples
 

@@ -233,20 +233,8 @@
                     </label>
                 </div>
                 <div class="form-group">
-                    <label for="content-type">Content Type</label>
-                    <select id="content-type">
-                        <option value="text">Text</option>
-                        <option value="json">JSON</option>
-                    </select>
-                </div>
-                <div class="form-group" id="text-content-group">
                     <label for="response-text">Response Text</label>
                     <textarea id="response-text" placeholder="Enter the response text content"></textarea>
-                </div>
-                <div class="form-group" id="json-content-group" style="display: none;">
-                    <label for="response-json">Response JSON</label>
-                    <textarea id="response-json" placeholder='Enter JSON content, e.g., {"result": 42, "status": "success"}' style="font-family: monospace;"></textarea>
-                    <small style="color: #666;">Enter valid JSON. It will be parsed and included in the response.</small>
                 </div>
             </div>
 
@@ -306,25 +294,8 @@
             updatePreview();
         });
 
-        // Handle content type change
-        document.getElementById('content-type').addEventListener('change', function() {
-            const contentType = this.value;
-            const textGroup = document.getElementById('text-content-group');
-            const jsonGroup = document.getElementById('json-content-group');
-            
-            if (contentType === 'json') {
-                textGroup.style.display = 'none';
-                jsonGroup.style.display = 'block';
-            } else {
-                textGroup.style.display = 'block';
-                jsonGroup.style.display = 'none';
-            }
-            updatePreview();
-        });
-
         // Add event listeners for response fields
         document.getElementById('response-text').addEventListener('input', updatePreview);
-        document.getElementById('response-json').addEventListener('input', updatePreview);
         document.getElementById('is-error').addEventListener('change', updatePreview);
 
         function generateInputFields(schema) {
@@ -419,25 +390,36 @@
             updatePreview();
         }
 
+        function formatYamlString(value, baseIndent = 0) {
+            if (typeof value !== 'string') {
+                return value;
+            }
+            // Check if string contains newlines
+            if (value.includes('\n')) {
+                // Use literal block scalar (|) for multiline strings
+                // Content should be indented 2 spaces more than the key
+                const lines = value.split('\n');
+                let result = '|\n';
+                const indentStr = ' '.repeat(baseIndent + 2);
+                lines.forEach(line => {
+                    result += indentStr + line + '\n';
+                });
+                return result;
+            }
+            // For single-line strings, escape quotes and wrap in quotes
+            const escaped = value.replace(/"/g, '\\"').replace(/\$/g, '\\$');
+            return '"' + escaped + '"';
+        }
+
         function updatePreview() {
             if (!selectedTool) return;
 
             const testCaseNumber = document.getElementById('test-case-number').value || 1;
-            const contentType = document.getElementById('content-type').value;
             const responseText = document.getElementById('response-text').value;
-            const responseJson = document.getElementById('response-json').value;
             const isError = document.getElementById('is-error').checked;
 
             const content = [];
-            if (contentType === 'json' && responseJson) {
-                try {
-                    const jsonData = JSON.parse(responseJson);
-                    content.push({ type: 'json', json: jsonData });
-                } catch (e) {
-                    // Invalid JSON, show error in preview
-                    content.push({ type: 'json', json: { error: 'Invalid JSON: ' + e.message } });
-                }
-            } else if (contentType === 'text' && responseText) {
+            if (responseText) {
                 content.push({ type: 'text', text: responseText });
             }
 
@@ -454,7 +436,12 @@
             Object.keys(testCase.input).forEach(key => {
                 const value = testCase.input[key];
                 if (typeof value === 'string') {
-                    yaml += '  ' + key + ': "' + value + '"\n';
+                    const formatted = formatYamlString(value, 2);
+                    if (formatted.includes('\n')) {
+                        yaml += '  ' + key + ': ' + formatted;
+                    } else {
+                        yaml += '  ' + key + ': ' + formatted + '\n';
+                    }
                 } else {
                     yaml += '  ' + key + ': ' + value + '\n';
                 }
@@ -464,15 +451,12 @@
             testCase.response.content.forEach(block => {
                 yaml += '    - type: ' + block.type + '\n';
                 if (block.type === 'text') {
-                    yaml += '      text: "' + block.text + '"\n';
-                } else if (block.type === 'json') {
-                    yaml += '      json:\n';
-                    // Format JSON for YAML (simplified - just stringify with indentation)
-                    const jsonStr = JSON.stringify(block.json, null, 2);
-                    const lines = jsonStr.split('\n');
-                    lines.forEach(line => {
-                        yaml += '        ' + line + '\n';
-                    });
+                    const formatted = formatYamlString(block.text, 6);
+                    if (formatted.includes('\n')) {
+                        yaml += '      text: ' + formatted;
+                    } else {
+                        yaml += '      text: ' + formatted + '\n';
+                    }
                 }
             });
             if (testCase.response.isError) {
@@ -497,21 +481,11 @@
             }
 
             const testCaseNumber = parseInt(document.getElementById('test-case-number').value) || 1;
-            const contentType = document.getElementById('content-type').value;
             const responseText = document.getElementById('response-text').value;
-            const responseJson = document.getElementById('response-json').value;
             const isError = document.getElementById('is-error').checked;
 
             const content = [];
-            if (contentType === 'json' && responseJson) {
-                try {
-                    const jsonData = JSON.parse(responseJson);
-                    content.push({ type: 'json', json: jsonData });
-                } catch (e) {
-                    showAlert('Invalid JSON: ' + e.message, 'error');
-                    return;
-                }
-            } else if (contentType === 'text' && responseText) {
+            if (responseText) {
                 content.push({ type: 'text', text: responseText });
             }
 
