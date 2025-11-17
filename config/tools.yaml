@@ -1,0 +1,69 @@
+tools:
+  - name: mock_echo
+    description: "Echoes back the input message"
+    defaultTestCase: 1
+    inputSchema:
+      type: object
+      properties:
+        message:
+          type: string
+          description: "The message to echo"
+      required:
+        - message
+
+  - name: mock_calculator
+    description: "Performs basic arithmetic operations"
+    defaultTestCase: 0  # Use test-case-1.yaml as default if no match found (0 = no default)
+    inputSchema:
+      type: object
+      properties:
+        operation:
+          type: string
+          description: "The operation to perform (add, subtract, multiply, divide)"
+          enum:
+            - add
+            - subtract
+            - multiply
+            - divide
+        a:
+          type: number
+          description: "First number"
+        b:
+          type: number
+          description: "Second number"
+      required:
+        - operation
+        - a
+        - b
+
+  - name: mock_delay
+    description: "Simulates a delayed operation"
+    inputSchema:
+      type: object
+      properties:
+        seconds:
+          type: number
+          description: "Number of seconds to delay"
+      required:
+        - seconds
+
+  - name: mock_greeter
+    description: "Greets a person by name"
+    inputSchema:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "The name of the person to greet"
+        language:
+          type: string
+          description: "Language for the greeting"
+          enum:
+            - en
+            - es
+            - fr
+            - de
+          default: en
+      required:
+        - name
+

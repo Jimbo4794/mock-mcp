@@ -1,0 +1,11 @@
+input:
+  operation: "divide"
+  a: 10
+  b: 0
+
+response:
+  content:
+    - type: text
+      text: "Error: Division by zero"
+  isError: true
+

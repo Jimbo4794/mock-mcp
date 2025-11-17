@@ -1,0 +1,10 @@
+input:
+  name: "Bob"
+  language: "es"
+
+response:
+  content:
+    - type: text
+      text: "Hola, Bob!"
+  isError: false
+

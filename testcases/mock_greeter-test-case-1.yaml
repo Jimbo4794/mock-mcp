@@ -1,0 +1,10 @@
+input:
+  name: "Alice"
+  language: "en"
+
+response:
+  content:
+    - type: text
+      text: "Hello, Alice!"
+  isError: false
+

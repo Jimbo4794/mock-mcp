@@ -1,0 +1,9 @@
+input:
+  message: "Hello, World!"
+
+response:
+  content:
+    - type: text
+      text: "Echo: Hello, World!"
+  isError: false
+

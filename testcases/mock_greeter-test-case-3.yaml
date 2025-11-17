@@ -1,0 +1,10 @@
+input:
+  name: "Charlie"
+  language: "fr"
+
+response:
+  content:
+    - type: text
+      text: "Bonjour, Charlie!"
+  isError: false
+

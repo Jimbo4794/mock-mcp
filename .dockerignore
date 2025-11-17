@@ -1,0 +1,48 @@
+# Binaries
+bin/
+mock-mcp-server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Coverage
+*.out
+
+# Dependencies
+vendor/
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Scripts (not needed in container)
+scripts/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.a
+*.o
+
+# Keep config and testcases for default setup (will be overridden by volumes)
+# config/
+# testcases/
+

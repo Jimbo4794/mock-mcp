@@ -1,0 +1,11 @@
+input:
+  operation: "add"
+  a: 10
+  b: 5
+
+response:
+  content:
+    - type: text
+      text: "Result: 15.00"
+  isError: false
+

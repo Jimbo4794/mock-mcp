@@ -1,0 +1,9 @@
+input:
+  message: "Test Message"
+
+response:
+  content:
+    - type: text
+      text: "Echo: Test Message"
+  isError: false
+

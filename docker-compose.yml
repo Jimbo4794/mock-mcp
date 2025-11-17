@@ -1,0 +1,24 @@
+services:
+  mock-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mock-mcp-server
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount tools configuration
+      - ./config:/app/config:ro
+      # Mount testcases directory
+      - ./testcases:/app/testcases:ro
+    environment:
+      # Set config path to mounted volume
+      - TOOLS_CONFIG=/app/config/tools.yaml
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+

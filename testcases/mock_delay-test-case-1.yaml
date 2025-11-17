@@ -1,0 +1,9 @@
+input:
+  seconds: 1
+
+response:
+  content:
+    - type: text
+      text: "Delayed for 1.00 seconds"
+  isError: false
+

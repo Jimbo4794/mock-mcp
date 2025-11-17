@@ -1,0 +1,11 @@
+input:
+  operation: "multiply"
+  a: 6
+  b: 7
+
+response:
+  content:
+    - type: text
+      text: "Result: 42.00"
+  isError: false
+
