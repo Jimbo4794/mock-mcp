@@ -1,0 +1,17 @@
+input:
+  operation: "add"
+  a: 10
+  b: 20
+
+response:
+  content:
+    - type: json
+      json:
+        result: 30
+        operation: "add"
+        operands:
+          a: 10
+          b: 20
+        timestamp: "2024-01-01T00:00:00Z"
+  isError: false
+

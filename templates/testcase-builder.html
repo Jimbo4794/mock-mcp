@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Case Builder - Mock MCP Server</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #4a4a4a;
+        }
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        select, input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: #4a4a4a;
+        }
+        textarea {
+            font-family: 'Courier New', monospace;
+            min-height: 100px;
+            resize: vertical;
+        }
+        .input-field {
+            margin-bottom: 15px;
+        }
+        .input-field label {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .input-field input, .input-field select {
+            margin-top: 5px;
+        }
+        .required {
+            color: #666;
+        }
+        .enum-values {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .response-content {
+            margin-top: 15px;
+        }
+        .content-block {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+        }
+        .btn-secondary {
+            background: #4a4a4a;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #2d2d2d;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .preview {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .alert-success {
+            background: #e8e8e8;
+            color: #1a1a1a;
+            border: 1px solid #4a4a4a;
+        }
+        .alert-error {
+            background: #d0d0d0;
+            color: #1a1a1a;
+            border: 1px solid #666;
+        }
+        .hidden {
+            display: none;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .tool-info {
+            background: #e8e8e8;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4a4a4a;
+        }
+        .tool-info h3 {
+            color: #1a1a1a;
+            margin-bottom: 10px;
+        }
+        .tool-info p {
+            color: #555;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Test Case Builder</h1>
+            <p>Build test cases for your MCP tools</p>
+        </div>
+        <div class="content">
+            <div id="alert-container"></div>
+            
+            <div class="section">
+                <h2>1. Select Tool</h2>
+                <div class="form-group">
+                    <label for="tool-select">Tool</label>
+                    <select id="tool-select">
+                        <option value="">-- Select a tool --</option>
+                    </select>
+                </div>
+                <div id="tool-info" class="tool-info hidden">
+                    <h3 id="tool-name"></h3>
+                    <p id="tool-description"></p>
+                </div>
+            </div>
+
+            <div class="section" id="input-section" style="display: none;">
+                <h2>2. Define Input</h2>
+                <div id="input-fields"></div>
+            </div>
+
+            <div class="section" id="response-section" style="display: none;">
+                <h2>3. Define Response</h2>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="is-error"> Mark as error response
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="content-type">Content Type</label>
+                    <select id="content-type">
+                        <option value="text">Text</option>
+                        <option value="json">JSON</option>
+                    </select>
+                </div>
+                <div class="form-group" id="text-content-group">
+                    <label for="response-text">Response Text</label>
+                    <textarea id="response-text" placeholder="Enter the response text content"></textarea>
+                </div>
+                <div class="form-group" id="json-content-group" style="display: none;">
+                    <label for="response-json">Response JSON</label>
+                    <textarea id="response-json" placeholder='Enter JSON content, e.g., {"result": 42, "status": "success"}' style="font-family: monospace;"></textarea>
+                    <small style="color: #666;">Enter valid JSON. It will be parsed and included in the response.</small>
+                </div>
+            </div>
+
+            <div class="section" id="preview-section" style="display: none;">
+                <h2>4. Preview & Download</h2>
+                <div class="form-group">
+                    <label for="test-case-number">Test Case Number</label>
+                    <input type="number" id="test-case-number" value="1" min="1">
+                </div>
+                <div class="preview" id="yaml-preview"></div>
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="downloadYAML()">📥 Download YAML</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tools = {{.ToolsJSON}};
+        let selectedTool = null;
+        let inputValues = {};
+
+        // Populate tool select
+        const toolSelect = document.getElementById('tool-select');
+        tools.forEach(tool => {
+            const option = document.createElement('option');
+            option.value = tool.name;
+            option.textContent = tool.name + ' - ' + tool.description;
+            toolSelect.appendChild(option);
+        });
+
+        toolSelect.addEventListener('change', function() {
+            const toolName = this.value;
+            if (!toolName) {
+                selectedTool = null;
+                document.getElementById('tool-info').classList.add('hidden');
+                document.getElementById('input-section').style.display = 'none';
+                document.getElementById('response-section').style.display = 'none';
+                document.getElementById('preview-section').style.display = 'none';
+                return;
+            }
+
+            selectedTool = tools.find(t => t.name === toolName);
+            if (!selectedTool) return;
+
+            // Show tool info
+            document.getElementById('tool-name').textContent = selectedTool.name;
+            document.getElementById('tool-description').textContent = selectedTool.description;
+            document.getElementById('tool-info').classList.remove('hidden');
+
+            // Generate input fields
+            generateInputFields(selectedTool.inputSchema);
+            document.getElementById('input-section').style.display = 'block';
+            document.getElementById('response-section').style.display = 'block';
+            document.getElementById('preview-section').style.display = 'block';
+            
+            updatePreview();
+        });
+
+        // Handle content type change
+        document.getElementById('content-type').addEventListener('change', function() {
+            const contentType = this.value;
+            const textGroup = document.getElementById('text-content-group');
+            const jsonGroup = document.getElementById('json-content-group');
+            
+            if (contentType === 'json') {
+                textGroup.style.display = 'none';
+                jsonGroup.style.display = 'block';
+            } else {
+                textGroup.style.display = 'block';
+                jsonGroup.style.display = 'none';
+            }
+            updatePreview();
+        });
+
+        // Add event listeners for response fields
+        document.getElementById('response-text').addEventListener('input', updatePreview);
+        document.getElementById('response-json').addEventListener('input', updatePreview);
+        document.getElementById('is-error').addEventListener('change', updatePreview);
+
+        function generateInputFields(schema) {
+            const container = document.getElementById('input-fields');
+            container.innerHTML = '';
+            inputValues = {};
+
+            if (!schema || !schema.properties) {
+                container.innerHTML = '<p>No input schema defined for this tool.</p>';
+                return;
+            }
+
+            const properties = schema.properties;
+            const required = schema.required || [];
+
+            Object.keys(properties).forEach(key => {
+                const prop = properties[key];
+                const isRequired = required.includes(key);
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'input-field';
+
+                const label = document.createElement('label');
+                label.innerHTML = key + (isRequired ? ' <span class="required">*</span>' : '');
+                if (prop.description) {
+                    label.innerHTML += ' <span style="font-weight: normal; color: #666;">(' + prop.description + ')</span>';
+                }
+                fieldDiv.appendChild(label);
+
+                let input;
+                if (prop.enum) {
+                    input = document.createElement('select');
+                    prop.enum.forEach(val => {
+                        const option = document.createElement('option');
+                        option.value = val;
+                        option.textContent = val;
+                        input.appendChild(option);
+                    });
+                    const enumInfo = document.createElement('div');
+                    enumInfo.className = 'enum-values';
+                    enumInfo.textContent = 'Allowed values: ' + prop.enum.join(', ');
+                    fieldDiv.appendChild(enumInfo);
+                } else if (prop.type === 'number') {
+                    input = document.createElement('input');
+                    input.type = 'number';
+                    input.step = 'any';
+                } else if (prop.type === 'boolean') {
+                    input = document.createElement('select');
+                    const trueOpt = document.createElement('option');
+                    trueOpt.value = 'true';
+                    trueOpt.textContent = 'true';
+                    const falseOpt = document.createElement('option');
+                    falseOpt.value = 'false';
+                    falseOpt.textContent = 'false';
+                    input.appendChild(trueOpt);
+                    input.appendChild(falseOpt);
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                }
+
+                if (prop.default !== undefined) {
+                    input.value = prop.default;
+                }
+
+                input.id = 'input-' + key;
+                input.addEventListener('change', function() {
+                    updateInputValue(key, this.value, prop.type);
+                });
+                input.addEventListener('input', function() {
+                    updateInputValue(key, this.value, prop.type);
+                });
+
+                fieldDiv.appendChild(input);
+                container.appendChild(fieldDiv);
+
+                // Initialize value
+                if (input.value) {
+                    updateInputValue(key, input.value, prop.type);
+                }
+            });
+        }
+
+        function updateInputValue(key, value, type) {
+            if (type === 'number') {
+                const num = parseFloat(value);
+                inputValues[key] = isNaN(num) ? value : num;
+            } else if (type === 'boolean') {
+                inputValues[key] = value === 'true';
+            } else {
+                inputValues[key] = value;
+            }
+            updatePreview();
+        }
+
+        function updatePreview() {
+            if (!selectedTool) return;
+
+            const testCaseNumber = document.getElementById('test-case-number').value || 1;
+            const contentType = document.getElementById('content-type').value;
+            const responseText = document.getElementById('response-text').value;
+            const responseJson = document.getElementById('response-json').value;
+            const isError = document.getElementById('is-error').checked;
+
+            const content = [];
+            if (contentType === 'json' && responseJson) {
+                try {
+                    const jsonData = JSON.parse(responseJson);
+                    content.push({ type: 'json', json: jsonData });
+                } catch (e) {
+                    // Invalid JSON, show error in preview
+                    content.push({ type: 'json', json: { error: 'Invalid JSON: ' + e.message } });
+                }
+            } else if (contentType === 'text' && responseText) {
+                content.push({ type: 'text', text: responseText });
+            }
+
+            const testCase = {
+                input: inputValues,
+                response: {
+                    content: content,
+                    isError: isError
+                }
+            };
+
+            // Convert to YAML-like format (simplified)
+            let yaml = 'input:\n';
+            Object.keys(testCase.input).forEach(key => {
+                const value = testCase.input[key];
+                if (typeof value === 'string') {
+                    yaml += '  ' + key + ': "' + value + '"\n';
+                } else {
+                    yaml += '  ' + key + ': ' + value + '\n';
+                }
+            });
+            yaml += '\nresponse:\n';
+            yaml += '  content:\n';
+            testCase.response.content.forEach(block => {
+                yaml += '    - type: ' + block.type + '\n';
+                if (block.type === 'text') {
+                    yaml += '      text: "' + block.text + '"\n';
+                } else if (block.type === 'json') {
+                    yaml += '      json:\n';
+                    // Format JSON for YAML (simplified - just stringify with indentation)
+                    const jsonStr = JSON.stringify(block.json, null, 2);
+                    const lines = jsonStr.split('\n');
+                    lines.forEach(line => {
+                        yaml += '        ' + line + '\n';
+                    });
+                }
+            });
+            if (testCase.response.isError) {
+                yaml += '  isError: true\n';
+            }
+
+            document.getElementById('yaml-preview').textContent = yaml;
+        }
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            container.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        async function saveTestCase() {
+            if (!selectedTool) {
+                showAlert('Please select a tool first', 'error');
+                return;
+            }
+
+            const testCaseNumber = parseInt(document.getElementById('test-case-number').value) || 1;
+            const contentType = document.getElementById('content-type').value;
+            const responseText = document.getElementById('response-text').value;
+            const responseJson = document.getElementById('response-json').value;
+            const isError = document.getElementById('is-error').checked;
+
+            const content = [];
+            if (contentType === 'json' && responseJson) {
+                try {
+                    const jsonData = JSON.parse(responseJson);
+                    content.push({ type: 'json', json: jsonData });
+                } catch (e) {
+                    showAlert('Invalid JSON: ' + e.message, 'error');
+                    return;
+                }
+            } else if (contentType === 'text' && responseText) {
+                content.push({ type: 'text', text: responseText });
+            }
+
+            const testCase = {
+                toolName: selectedTool.name,
+                testCaseNumber: testCaseNumber,
+                input: inputValues,
+                response: {
+                    content: content,
+                    isError: isError
+                }
+            };
+
+            try {
+                const response = await fetch('/api/testcase/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testCase)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showAlert(result.message || 'Test case saved successfully!', 'success');
+                } else {
+                    const error = await response.text();
+                    showAlert('Error: ' + error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error saving test case: ' + error.message, 'error');
+            }
+        }
+
+        function downloadYAML() {
+            const yaml = document.getElementById('yaml-preview').textContent;
+            if (!yaml || !selectedTool) {
+                showAlert('Please generate a preview first', 'error');
+                return;
+            }
+
+            const testCaseNumber = document.getElementById('test-case-number').value || 1;
+            const filename = selectedTool.name + '-test-case-' + testCaseNumber + '.yaml';
+            
+            const blob = new Blob([yaml], { type: 'text/yaml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Initialize preview on response changes
+        document.getElementById('response-text').addEventListener('input', updatePreview);
+        document.getElementById('is-error').addEventListener('change', updatePreview);
+        document.getElementById('test-case-number').addEventListener('input', updatePreview);
+    </script>
+</body>
+</html>

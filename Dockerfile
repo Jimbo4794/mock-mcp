@@ -23,6 +23,9 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/mock-mcp-server .
 
+# Copy templates directory
+COPY --from=builder /build/templates /app/templates
+
 # Create directories for config and testcases (will be overridden by volumes)
 RUN mkdir -p /app/config /app/testcases
 

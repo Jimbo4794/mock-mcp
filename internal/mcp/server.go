@@ -3,8 +3,11 @@ package mcp
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -292,4 +295,108 @@ func (s *MockMCPServer) sendError(w http.ResponseWriter, id interface{}, code in
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
 	json.NewEncoder(w).Encode(response)
+}
+
+// HandleTestCaseBuilder serves the test case builder HTML page
+func (s *MockMCPServer) HandleTestCaseBuilder(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	tools := s.toolManager.GetAllTools()
+	toolsJSON, _ := json.Marshal(tools)
+
+	// Find template file
+	templatePath := s.findTemplatePath()
+	if templatePath == "" {
+		log.Printf("Error: Template file not found")
+		http.Error(w, "Template file not found", http.StatusInternalServerError)
+		return
+	}
+
+	// Read and parse template
+	tmpl, err := template.ParseFiles(templatePath)
+	if err != nil {
+		log.Printf("Error parsing template: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Tools":     tools,
+		"ToolsJSON": template.JS(toolsJSON),
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Printf("Error rendering test case builder: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+// findTemplatePath finds the template file using similar logic to config path resolution
+func (s *MockMCPServer) findTemplatePath() string {
+	wd, _ := os.Getwd()
+	possiblePaths := []string{
+		"/app/templates/testcase-builder.html",                  // Docker default
+		filepath.Join(wd, "templates", "testcase-builder.html"), // Local dev
+		filepath.Join(wd, "..", "templates", "testcase-builder.html"),
+		filepath.Join(wd, "..", "..", "templates", "testcase-builder.html"),
+		"templates/testcase-builder.html",
+	}
+
+	for _, path := range possiblePaths {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+
+	// If still not found, use Docker default
+	return "/app/templates/testcase-builder.html"
+}
+
+// HandleSaveTestCase handles saving a test case via API
+func (s *MockMCPServer) HandleSaveTestCase(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		ToolName       string                 `json:"toolName"`
+		TestCaseNumber int                    `json:"testCaseNumber"`
+		Input          map[string]interface{} `json:"input"`
+		Response       ToolResult             `json:"response"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Validate tool exists
+	if _, exists := s.toolManager.GetTool(req.ToolName); !exists {
+		http.Error(w, fmt.Sprintf("Tool not found: %s", req.ToolName), http.StatusBadRequest)
+		return
+	}
+
+	// Create test case config
+	testCase := &TestCaseConfig{
+		Input:    req.Input,
+		Response: req.Response,
+	}
+
+	// Save test case
+	if err := s.testCaseManager.SaveTestCase(req.ToolName, req.TestCaseNumber, testCase); err != nil {
+		log.Printf("Error saving test case: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to save test case: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": fmt.Sprintf("Test case saved: %s-test-case-%d.yaml", req.ToolName, req.TestCaseNumber),
+	})
 }

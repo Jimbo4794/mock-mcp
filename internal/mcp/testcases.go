@@ -186,3 +186,32 @@ func (tcm *TestCaseManager) toFloat64(v interface{}) (float64, bool) {
 		return 0, false
 	}
 }
+
+// SaveTestCase saves a test case to a YAML file
+func (tcm *TestCaseManager) SaveTestCase(toolName string, testCaseNumber int, testCase *TestCaseConfig) error {
+	// Ensure testcases directory exists
+	if err := os.MkdirAll(tcm.testCasesDir, 0755); err != nil {
+		return fmt.Errorf("failed to create testcases directory: %w", err)
+	}
+
+	// Generate filename
+	filename := filepath.Join(tcm.testCasesDir, fmt.Sprintf("%s-test-case-%d.yaml", toolName, testCaseNumber))
+
+	// Marshal to YAML
+	data, err := yaml.Marshal(testCase)
+	if err != nil {
+		return fmt.Errorf("failed to marshal test case: %w", err)
+	}
+
+	// Write to file
+	if err := os.WriteFile(filename, data, 0644); err != nil {
+		return fmt.Errorf("failed to write test case file: %w", err)
+	}
+
+	return nil
+}
+
+// GetTestCasesDir returns the test cases directory path
+func (tcm *TestCaseManager) GetTestCasesDir() string {
+	return tcm.testCasesDir
+}

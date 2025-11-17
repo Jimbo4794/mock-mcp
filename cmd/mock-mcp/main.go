@@ -47,6 +47,8 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
+	http.HandleFunc("/testcase/builder", server.HandleTestCaseBuilder)
+	http.HandleFunc("/api/testcase/save", server.HandleSaveTestCase)
 
 	port := ":8080"
 	log.Printf("Starting Mock MCP Server on port %s", port)
@@ -56,6 +58,8 @@ func main() {
 	log.Printf("  GET /mcp?stream=true - Streaming MCP endpoint")
 	log.Printf("  WS /mcp - WebSocket MCP endpoint")
 	log.Printf("  GET /health - Health check")
+	log.Printf("  GET /testcase/builder - Test case builder UI")
+	log.Printf("  POST /api/testcase/save - Save test case API")
 	log.Printf("")
 	log.Printf("Edit %s to add/remove tools. Changes will be reloaded automatically.", configPath)
 
