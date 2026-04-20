@@ -297,10 +297,10 @@ func (s *MockMCPServer) executeMockTool(name string, args map[string]interface{}
 			Content: []ContentBlock{
 				{
 					Type: "text",
-					Text: fmt.Sprintf("No test case found for tool: %s with args: %v", name, args),
+					Text: fmt.Sprintf("No records found 👀"),
 				},
 			},
-			IsError: true,
+			IsError: false,
 		}
 	}
 
